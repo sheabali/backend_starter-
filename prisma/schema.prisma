@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String     @id @default(auto()) @map("_id") @db.ObjectId
+  fullName        String
+  userName        String?
+  email           String     @unique
+  password        String
+  profileImage    String?
+  coverImage      String?
+  role            UserRole   @default(USER)
+  status          UserStatus @default(ACTIVE)
+  lat             Float      @default(0.0)
+  lon             Float      @default(0.0)
+  suspendedUntil  DateTime?
+  lastLoginAt     DateTime?
+  expirationOtp   DateTime?
+  otp             Int?
+  fcmToken        String?
+  onBoarding      Boolean    @default(false)
+  accountLink     String?
+  stripeAccountId String?
+  customerId      String?
+  paymentMethodId String?
+  isApproved      Boolean    @default(false)
+  emailVerified   Boolean    @default(false)
+  isBlocked       Boolean    @default(false)
+  isDeleted       Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  //Relation
+  following       Follow[]       @relation("Followers")
+  followers       Follow[]       @relation("Following")
+  Notification    Notification[] @relation("UserRelation")
+  roomsAsSender   Room[]         @relation("RoomSender")
+  roomsAsReceiver Room[]         @relation("RoomReceiver")
+
+  @@map("users")
+}
+
+model Follow {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  followerId  String   @db.ObjectId
+  followingId String   @db.ObjectId
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerId], references: [id])
+  following User @relation("Followers", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId]) // Prevent duplicate follows
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  title     String
+  body      String
+  data      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  //Relation
+  user User @relation("UserRelation", fields: [userId], references: [id])
+
+  @@map("Notifications")
+}
+
+model Room {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  senderId   String   @db.ObjectId
+  receiverId String   @db.ObjectId
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  //Relation
+  sender   User   @relation("RoomSender", fields: [senderId], references: [id])
+  receiver User   @relation("RoomReceiver", fields: [receiverId], references: [id])
+  chat     Chat[]
+}
+
+model Chat {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  senderId   String   @db.ObjectId
+  receiverId String   @db.ObjectId
+  roomId     String   @db.ObjectId
+  message    String?
+  imageUrl   String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  //Relation
+  room Room @relation(fields: [roomId], references: [id])
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BLOCKED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+}
